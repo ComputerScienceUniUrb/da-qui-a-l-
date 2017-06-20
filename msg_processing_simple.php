@@ -40,7 +40,35 @@ function request_disability($chat_id) {
                 )
             )
         ))
-    ); 
+    );
+}
+
+function request_start($chat_id) {
+    telegram_send_message($chat_id, "Per iniziare a registrare, clicca sul pulsante qui sotto.",
+        array("reply_markup" => array(
+            "keyboard" => array(
+                array(
+                    array("text" => "Inizia percorso!", "request_location" => true)
+                )
+            ),
+            "resize_keyboard" => true,
+            "one_time_keyboard" => true
+        ))
+    );
+}
+
+function request_end($chat_id) {
+    telegram_send_message($chat_id, "Clicca sul pulsante quando hai raggiunto la destinazione.",
+        array("reply_markup" => array(
+            "keyboard" => array(
+                array(
+                    array("text" => "Sono a destinazione!", "request_location" => true)
+                )
+            ),
+            "resize_keyboard" => true,
+            "one_time_keyboard" => true
+        ))
+    );
 }
 
 // Input: $update
@@ -57,14 +85,26 @@ if(isset($update['message'])) {
         $text = $message['text'];
 
         if (strpos($text, "/start") === 0) {
-            echo 'Received /start command!' . PHP_EOL; 
+            Logger::debug("Start command");
+
             telegram_send_message($chat_id, "Benvenuto/a, sono il bot Da-qui-a-lì! 🤖\n\nIl mio scopo è collezionare informazioni sull'accessibilità dei percorsi all'interno dell'ambiente urbano."); 
             
             telegram_send_message($chat_id, "Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all'interno della città!"); 
             
             request_disability($chat_id);
             return;
-        } else if (strpos($text, "/normodotato") === 0 
+        }
+        else if(strpos($text, "/begin") === 0) {
+            Logger::debug("Begin command");
+
+            request_start($chat_id);
+        }
+        else if(strpos($text, "/setup") === 0) {
+            Logger::debug("Setup command");
+
+            request_disability($chat_id);
+        }
+        else if (strpos($text, "/normodotato") === 0 
             or strpos($text, "/stampelle-bastone") === 0 
             or strpos($text, "/tripode-quadripode") === 0 
             or strpos($text, "/deambulatore") === 0 
@@ -94,65 +134,35 @@ if(isset($update['message'])) {
             echo 'Query eseguita correttamente';   
             return;
         }
-    } 
-
-
-    if (isset($message['location'])) {
+    }
+    else if (isset($message['location'])) {
         // We got an incoming location message
         $location = $message['location'];
-        $latitude = $location ['latitude'];
-        $longitude = $location ['longitude'];
+        $latitude = $location['latitude'];
+        $longitude = $location['longitude'];
 
-        $result = mysqli_query ($conn,"SELECT * FROM TABETEST WHERE user=$chat_id ORDER BY id DESC LIMIT 1; ")
-            or die("Connessione non riuscita: " . mysql_error());
+        $running_journey = db_scalar_query("SELECT `id` FROM `journeys` WHERE `telegram_id` = {$chat_id
+        } AND `lat2` IS NULL AND `lng2` IS NULL ORDER BY `id` DESC LIMIT 1");
+        Logger::debug("Running journey #{$running_journey}");
 
-        printf("Select returned %d rows.\n", mysqli_num_rows($result));
-        if(mysqli_num_rows($result) == 0){
-            telegram_send_message($chat_id, "Uhm... sembra che qualcosa sia andato storto! 😑 \nPer riprovare invia /start" );    
-            return;
+        if($running_journey) {
+            // Close journey
+            db_perform_action("UPDATE `journeys` SET `lat2` = {$latitude}, `lng2` = {$longitude}, `time2` = NOW() WHERE `id` = {$running_journey} LIMIT 1");
+
+            // TODO: Send stats on journey
+
+            telegram_send_message($chat_id, "Il tuo percorso è stato registrato correttamente, grazie! 👍 Usa il comando /begin per registrarne un altro.");
         }
+        else {
+            // New journey
+            db_perform_action("INSERT INTO `journeys` (`id`, `telegram_id`, `lat1`, `lng1`, `time1`) VALUES(DEFAULT, {$chat_id}, {$latitude}, {$longitude}, NOW())");
 
-        $result_arr = mysqli_fetch_assoc($result);
-        
-        
-        print_r($result_arr);
-
-        $row_id = $result_arr['id'];
-        $lat1 = $result_arr['lat1'];
-        $lat2 = $result_arr['lat2'];
-        
-        /* free result set */
-        //mysqli_free_result($result);
-        
-
-        if ($lat1 == null) {
-            echo 'Received /INIZIO command!' . PHP_EOL;
-
-            $timestamp1 = time();
-            $query = "UPDATE TABETEST set lat1=$latitude, long1=$longitude , temp1=NOW() where id=$row_id ; ";
-            echo $query.PHP_EOL;
-            mysqli_query ($conn, $query)
-                    or die("Connessione non riuscita: " . mysql_error());
-            echo 'Query eseguita correttamente';   
-
-            telegram_send_message($chat_id, "Appena hai raggiunto la tua meta premi il tasto", array("reply_markup" => array("keyboard" => array(array(array("text"=>"/FINE 🏁", "request_location"=> true))))));    
-
-            return;
-        } else if($lat2 == NULL) {
-            echo 'Received /FINE command!' . PHP_EOL;
-
-            mysqli_query ($conn,"UPDATE TABETEST set lat2=$latitude, long2=$longitude , temp2=NOW() where id=$row_id; ")
-                        or die("Connessione non riuscita: " . mysql_error());
-
-            echo 'Query eseguita correttamente'; 
-
-            telegram_send_message($chat_id, "Grazie per il tuo aiuto! 💗 \nSe vuoi fornire dati riguardanti un nuovo percorso riseleziona la disabilità.", 
-                array("reply_markup" => array("keyboard" => array(array(array("text"=>"/normodotato" ),  array("text"=>"/stampelle-bastone"), array("text"=>"/tripode-quadrupode"),),array(array("text"=>"/deambulatore"),  array("text"=>"/carrozzina manuale"), array("text"=>"/carrozzina elettrica"),),array(array("text"=>"/bastone tattile"),  array("text"=>"/passeggini"), array("text"=>"/carrozzine neonati"),),array(array("text"=>"/donna incinta"),  array("text"=>"/adulto con un bambino"),)    ),))); 
-            return;
-        } 
+            request_end($chat_id);
+        }
     }
-
-    telegram_send_message($chat_id, "Uhm... sembra che qualcosa sia andato storto! 😑\n Per riprovare invia /start" );
+    else {
+        telegram_send_message($chat_id, "Uhm… non capisco questo tipo di messaggi! 😑\nPer riprovare invia /start.");
+    }
 }
 else if(isset($update['callback_query'])) {
     // Callback query
@@ -166,6 +176,8 @@ else if(isset($update['callback_query'])) {
             db_perform_action("REPLACE INTO `status` (`telegram_id`, `disability`) VALUES($chat_id, '".db_escape($dis_code)."')");
 
             telegram_send_message($chat_id, "Ok, la tua condizione è memorizzata come: {$disabilities_to_name_map[$dis_code]}.");
+
+            request_start($chat_id);
         }
         else {
             Logger::error("Invalid callback data: {$callback_data}");

@@ -1,6 +1,15 @@
 <?php
 /* General data */
 
+function get_user_disability($telegram_id) {
+    $dis = db_scalar_query("SELECT `disability` FROM `status` WHERE `telegram_id` = {$telegram_id} LIMIT 1");
+
+    if($dis)
+        return $dis;
+    else
+        return $disabilities_code[0];
+}
+
 $disabilities_code = array(
     "a1",
     "a2",
