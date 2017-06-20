@@ -23,12 +23,6 @@ if (!$update) {
     Logger::fatal('Bad message received (not JSON)', __FILE__);
 }
 else {
-    if (isset($update['message'])) {
-        $message = $update['message'];
-        include 'msg_processing_simple.php';
-    }
-    else {
-        Logger::fatal('Bad message received (no message field)', __FILE__);
-    }
+    include 'msg_processing_simple.php';
 }
 ?>

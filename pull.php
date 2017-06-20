@@ -27,9 +27,9 @@ if(count($content) == 0) {
     exit;
 }
 
-$first_update = $content[0];
+$update = $content[0];
 
-Logger::debug('New update received: ' . print_r($first_update, true), __FILE__);
+Logger::debug('New update received: ' . print_r($update, true), __FILE__);
 
 // Updates have the following structure:
 // [
@@ -41,8 +41,7 @@ Logger::debug('New update received: ' . print_r($first_update, true), __FILE__);
 //     }
 // ]
 
-$update_id = $first_update['update_id'];
-$message = $first_update['message'];
+$update_id = $update['update_id'];
 
 // Update persistent store with latest update ID received
 file_put_contents(dirname(__FILE__) . '/pull-last-update.txt', $update_id);
