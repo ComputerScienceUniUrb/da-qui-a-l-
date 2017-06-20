@@ -7,7 +7,7 @@
  * Configuration file.
  */
 
-define('TELEGRAM_BOT_TOKEN', '355054818:AAENE4j6YtkXToeZd9fybF8KXhgC2KfI5D0');
+define('TELEGRAM_BOT_TOKEN', '');
 define('TELEGRAM_API_URI_BASE', 'https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/');
 define('TELEGRAM_FILE_API_URI_BASE', 'https://api.telegram.org/file/bot' . TELEGRAM_BOT_TOKEN . '/');
 
