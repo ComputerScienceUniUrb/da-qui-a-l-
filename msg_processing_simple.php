@@ -6,8 +6,6 @@
  * ===================
  * Basic message processing functionality,
  * used by both pull and push scripts.
- *
- * Put your custom bot intelligence here!
  */
 
 // This file assumes to be included by pull.php or
@@ -71,8 +69,6 @@ $username = "root";
 $password = "laboratorio";
 $db = "test_uniurb_51";
 
-
-//use Longman\TelegramBot\Entities\InlineKeyboardMarkup;
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $db);
