@@ -60,6 +60,12 @@ function telegram_send_message($chat_id, $message, $parameters = null) {
         'text' => $message
     ));
 
+    if(!isset($parameters['reply_markup'])) {
+        $parameters['reply_markup'] = array(
+            "remove_keyboard" => true
+        );
+    }
+
     $handle = prepare_curl_api_request(TELEGRAM_API_URI_BASE . 'sendMessage', 'POST', $parameters, null);
 
     return perform_telegram_request($handle);
