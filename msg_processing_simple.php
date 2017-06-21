@@ -15,6 +15,15 @@ require_once('data.php');
 // It also assumes that the update data is stored
 // inside a $update variable.
 
+function clamp($min, $max, $value) {
+    if($value < $min)
+        return $min;
+    else if($value > $max)
+        return $max;
+    else
+        return $value;
+}
+
 function request_disability($chat_id) {
     telegram_send_message($chat_id, "Seleziona il pulsante che meglio rappresenta la tua condizione.",
         array("reply_markup" => array(
@@ -48,7 +57,7 @@ function request_start($chat_id) {
         array("reply_markup" => array(
             "keyboard" => array(
                 array(
-                    array("text" => "Inizia percorso!", "request_location" => true)
+                    array("text" => "Inizia il percorso!", "request_location" => true)
                 )
             ),
             "resize_keyboard" => true,
@@ -97,6 +106,8 @@ if(isset($update['message'])) {
         else if(strpos($text, "/begin") === 0) {
             Logger::debug("Begin command");
 
+            //TODO: close pending journeys
+
             request_start($chat_id);
         }
         else if(strpos($text, "/setup") === 0) {
@@ -104,35 +115,8 @@ if(isset($update['message'])) {
 
             request_disability($chat_id);
         }
-        else if (strpos($text, "/normodotato") === 0 
-            or strpos($text, "/stampelle-bastone") === 0 
-            or strpos($text, "/tripode-quadripode") === 0 
-            or strpos($text, "/deambulatore") === 0 
-            or strpos($text, "/carrozzina manuale") === 0 
-            or strpos($text, "/carrozzina elettrica") === 0 
-            or strpos($text, "/bastone tattile") === 0 
-            or strpos($text, "/passeggini") === 0 
-            or strpos($text, "/carrozzine neonati") === 0 
-            or strpos($text, "/donna incinta") === 0 
-            or strpos($text, "/adulto con un bambino") === 0)  {
-            
-            $dis = disablity_code($text);
-
-            echo 'Received /dis command!' . PHP_EOL;  
-            //clean db
-            mysqli_query ($conn,"DELETE FROM TABETEST WHERE user=$chat_id AND lat2 IS NULL;")
-                or die("Connessione non riuscita: " . mysql_error());
-
-
-            telegram_send_message($chat_id, "Iniziamo il percorso?", 
-            array("reply_markup" => array("keyboard" => array(array(array("text"=>"/INIZIO 🏃", "request_location"=> true)))))); 
-            $query = "INSERT INTO TABETEST (user, dis) VALUES ($chat_id, '$dis' )";
-            echo $query.PHP_EOL;
-            mysqli_query ($conn,$query)
-                or die("Connessione non riuscita: " . mysql_error());
-
-            echo 'Query eseguita correttamente';   
-            return;
+        else {
+            telegram_send_message($chat_id, "Non ho capito.");
         }
     }
     else if (isset($message['location'])) {
@@ -149,13 +133,32 @@ if(isset($update['message'])) {
             // Close journey
             db_perform_action("UPDATE `journeys` SET `lat2` = {$latitude}, `lng2` = {$longitude}, `time2` = NOW() WHERE `id` = {$running_journey} LIMIT 1");
 
-            // TODO: Send stats on journey
+            $stats = db_row_query("SELECT SQRT(POW(`lat2` - `lat1`, 2) + POW(`lng2` - `lng1`, 2)) AS distance, (3959 * acos(cos(radians(`lat1`)) * cos(radians(`lat2`)) * cos(radians(`lng2`) - radians(`lng1`)) + sin(radians(`lat1`)) * sin(radians(`lat2`)))) AS distance_hav, TIMESTAMPDIFF(MINUTE, `time1`, `time2`) AS elapsed_minutes, `disability` FROM `journeys` WHERE `id` = {$running_journey}");
 
-            telegram_send_message($chat_id, "Il tuo percorso è stato registrato correttamente, grazie! 👍 Usa il comando /begin per registrarne un altro.");
+            print_r($stats);
+
+            $stats_kms = round((float)$stats[1], 1, PHP_ROUND_HALF_UP);
+            $stats_mins = intval($stats[2]);
+            $stats_dis = $disabilities_to_name_map[$stats[3]];
+
+            var_dump($stats_dis);
+
+            telegram_send_message($chat_id, "Hai percorso {$stats_kms} km in {$stats_mins} minuti, in questa condizione: {$stats_dis}. Ok?", array(
+                "reply_markup" => array(
+                    "inline_keyboard" => array(
+                        array(
+                            array("text" => "Ok! 👍", "callback_data" => "confirm {$running_journey}"),
+                            array("text" => "No.", "callback_data" => "cancel")
+                        )
+                    )
+                )
+            ));
         }
         else {
+            $user_disability = get_user_disability($chat_id);
+
             // New journey
-            db_perform_action("INSERT INTO `journeys` (`id`, `telegram_id`, `lat1`, `lng1`, `time1`) VALUES(DEFAULT, {$chat_id}, {$latitude}, {$longitude}, NOW())");
+            db_perform_action("INSERT INTO `journeys` (`id`, `telegram_id`, `disability`, `lat1`, `lng1`, `time1`) VALUES(DEFAULT, {$chat_id}, '".db_escape($user_disability)."', {$latitude}, {$longitude}, NOW())");
 
             request_end($chat_id);
         }
@@ -164,6 +167,7 @@ if(isset($update['message'])) {
         telegram_send_message($chat_id, "Uhm… non capisco questo tipo di messaggi! 😑\nPer riprovare invia /start.");
     }
 }
+
 else if(isset($update['callback_query'])) {
     // Callback query
     $callback_data = $update['callback_query']['data'];
@@ -184,9 +188,60 @@ else if(isset($update['callback_query'])) {
             telegram_send_message($chat_id, "Codice non valido. 😑");
         }
     }
-}
-else {
+    else if(strpos($callback_data, "confirm ") === 0) {
+        $track_id = intval(substr($callback_data, 8));
+        Logger::debug("Confirming track #{$track_id}");
+        
+        db_perform_action("UPDATE `journeys` SET `confirm` = 1 WHERE `id` = {$track_id}");
 
-}
+        telegram_send_message($chat_id, "Registrato, grazie! Come valuteresti l’accessibilità del percorso, da 1 a 5?", array(
+            "reply_markup" => array(
+                "inline_keyboard" => array(
+                    array(
+                        array("text" => "1 👎", "callback_data" => "rate {$track_id} 1"),
+                        array("text" => "2", "callback_data" => "rate {$track_id} 2"),
+                        array("text" => "3", "callback_data" => "rate {$track_id} 3"),
+                        array("text" => "4", "callback_data" => "rate {$track_id} 4"),
+                        array("text" => "5 👍", "callback_data" => "rate {$track_id} 5")
+                    )
+                )
+            )
+        ));
+    }
+    else if(strpos($callback_data, "cancel ") === 0) {
+        telegram_send_message($chat_id, "Allora niente. Se vuoi tracciare un nuovo percorso, usa il comando /begin.");
+    }
+    else if(strpos($callback_data, "rate ") === 0) {
+        $data = explode(" ", substr($callback_data, 5));
+        $track_id = intval($data[0]);
+        $rating = clamp(1, 5, intval($data[1]));
+        Logger::debug("Rating track #{$track_id} with {$rating}");
 
-?>
+        db_perform_action("UPDATE `journeys` SET `rating` = ${rating} WHERE `id` = {$track_id}");
+
+        telegram_send_message($chat_id, "Bene. Hai avuto bisogno di aiuto durante il tragitto?", array(
+            "reply_markup" => array(
+                "inline_keyboard" => array(
+                    array(
+                        array("text" => "Sì.", "callback_data" => "help {$track_id} 1"),
+                        array("text" => "No.", "callback_data" => "help {$track_id} 0")
+                    )
+                )
+            )
+        ));
+    }
+    else if(strpos($callback_data, "help ") === 0) {
+        $data = explode(" ", substr($callback_data, 5));
+        $track_id = intval($data[0]);
+        $help_needed = clamp(0, 1, intval($data[1]));
+        Logger::debug("Help needed on track #{$track_id}: {$help_needed}");
+
+        db_perform_action("UPDATE `journeys` SET `help_needed` = ${help_needed} WHERE `id` = {$track_id}");
+
+        telegram_send_message($chat_id, "Grazie. 😉 Se vuoi tracciare un nuovo percorso, usa il comando /begin.");
+    }
+    else {
+        // Huh?
+        Logger::error("Unknown callback, data: {$callback_data}");
+    }
+}
