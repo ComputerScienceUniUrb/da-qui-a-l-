@@ -106,7 +106,9 @@ if(isset($update['message'])) {
         else if(strpos($text, "/begin") === 0) {
             Logger::debug("Begin command");
 
-            //TODO: close pending journeys
+            // Delete open journeys
+            $num_delete = db_perform_action("DELETE FROM `journeys` WHERE `telegram_id` = {$chat_id} AND `lat2` IS NULL AND `lng2` IS NULL");
+            Logger::debug("{$num_delete} open journeys deleted");
 
             request_start($chat_id);
         }
