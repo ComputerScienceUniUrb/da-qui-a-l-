@@ -210,7 +210,7 @@ else if(isset($update['callback_query'])) {
             )
         ));
     }
-    else if(strpos($callback_data, "cancel ") === 0) {
+    else if(strpos($callback_data, "cancel") === 0) {
         telegram_send_message($chat_id, "Allora niente. Se vuoi tracciare un nuovo percorso, usa il comando /begin.");
     }
     else if(strpos($callback_data, "rate ") === 0) {
