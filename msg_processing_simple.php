@@ -25,27 +25,32 @@ function clamp($min, $max, $value) {
 }
 
 function request_disability($chat_id) {
-    telegram_send_message($chat_id, "Seleziona il pulsante che meglio rappresenta la tua condizione.",
+    telegram_send_message($chat_id, "Seleziona il pulsante che meglio rappresenta la condizione in cui affronti il percorso.",
         array("reply_markup" => array(
             "inline_keyboard" => array(
                 array(
-                    array("text" => "🚶", "callback_data" => "dis a1"),
+                    array("text" => "A piedi", "callback_data" => "dis a0"),
+                    array("text" => "Bimbo per mano", "callback_data" => "dis a11")
+                ),
+                array(
+                    array("text" => "Bimbo in passeggino", "callback_data" => "dis a8"),
+                    array("text" => "Neonato in carrozzina", "callback_data" => "dis a9")
+                ),
+                array(
+                    array("text" => "Gravidanza", "callback_data" => "dis a10"),
+                    array("text" => "Deambulatore", "callback_data" => "dis a4")
+                ),
+                array(
+                    array("text" => "Bastone", "callback_data" => "dis a1"),
+                    array("text" => "Bastone tattile", "callback_data" => "dis a7")
+                ),
+                array(
                     array("text" => "Stampelle", "callback_data" => "dis a2"),
-                    array("text" => "Tri/quadripode", "callback_data" => "dis a3")
+                    array("text" => "Tripode", "callback_data" => "dis a3")
                 ),
                 array(
-                    array("text" => "Deambulatore", "callback_data" => "dis a4"),
-                    array("text" => "♿", "callback_data" => "dis a5"),
-                    array("text" => "♿ (elettrica)", "callback_data" => "dis a6")
-                ),
-                array(
-                    array("text" => "Bastone tattile", "callback_data" => "dis a7"),
-                    array("text" => "Passeggino", "callback_data" => "dis a8"),
-                    array("text" => "Carrozzina", "callback_data" => "dis a9")
-                ),
-                array(
-                    array("text" => "🤰", "callback_data" => "dis a10"),
-                    array("text" => "👩‍👧", "callback_data" => "dis a11")
+                    array("text" => "Carrozzella manuale", "callback_data" => "dis a5"),
+                    array("text" => "Carrozzella elettrica", "callback_data" => "dis a6")
                 )
             )
         ))

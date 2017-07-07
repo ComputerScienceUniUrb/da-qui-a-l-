@@ -11,6 +11,7 @@ function get_user_disability($telegram_id) {
 }
 
 $disabilities_code = array(
+    "a0",
     "a1",
     "a2",
     "a3",
@@ -25,15 +26,16 @@ $disabilities_code = array(
 );
 
 $disabilities_to_name_map = array(
-    "a1" => "Deambulazione normale",
-    "a2" => "Stampelle o bastone",
-    "a3" => "Tripode o quadripode",
+    "a0" => "A piedi",
+    "a1" => "Bastone",
+    "a2" => "Stampelle",
+    "a3" => "Tripode",
     "a4" => "Deambulatore",
     "a5" => "Carrozzina manuale",
     "a6" => "Carrozzina elettrica",
     "a7" => "Bastone tattile",
-    "a8" => "Passeggino",
-    "a9" => "Carrozzina",
-    "a10" => "Donna incinta",
-    "a11" => "Adulto con bambino"
+    "a8" => "Bimbo in passeggino",
+    "a9" => "Neonato in carrozzina",
+    "a10" => "Gravidanza",
+    "a11" => "Bimbo per mano"
 );
