@@ -24,6 +24,16 @@ function clamp($min, $max, $value) {
         return $value;
 }
 
+function perform_command_begin($chat_id) {
+    Logger::debug("Begin command");
+
+    // Delete open journeys
+    $num_delete = db_perform_action("DELETE FROM `journeys` WHERE `telegram_id` = {$chat_id} AND `lat2` IS NULL AND `lng2` IS NULL");
+    Logger::debug("{$num_delete} open journeys deleted");
+
+    request_start($chat_id);
+}
+
 function request_disability($chat_id) {
     telegram_send_message($chat_id, "Seleziona il pulsante che meglio rappresenta la condizione in cui affronti il percorso.",
         array("reply_markup" => array(
@@ -85,6 +95,21 @@ function request_end($chat_id) {
     );
 }
 
+function request_restart($chat_id, $text) {
+    telegram_send_message($chat_id, $text,
+        array("reply_markup" => array(
+            "inline_keyboard" => array(
+                array(
+                    array("text" => "Aggiorna condizione", "callback_data" => "setup")
+                ),
+                array(
+                    array("text" => "Nuovo percorso", "callback_data" => "begin")
+                )
+            )
+        ))
+    );
+}
+
 // Input: $update
 
 if(isset($update['message'])) {
@@ -101,21 +126,15 @@ if(isset($update['message'])) {
         if (strpos($text, "/start") === 0) {
             Logger::debug("Start command");
 
-            telegram_send_message($chat_id, "Benvenuto/a, sono il bot Da-qui-a-lì! 🤖\n\nIl mio scopo è collezionare informazioni sull'accessibilità dei percorsi all'interno dell'ambiente urbano."); 
+            telegram_send_message($chat_id, "Ciao, sono il bot Da-qui-a-lì! 🤖\n\nRaccolgo informazioni sull’accessibilità dei centri abitati per i pedoni."); 
             
-            telegram_send_message($chat_id, "Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all'interno della città!"); 
+            telegram_send_message($chat_id, "Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all’interno della città!"); 
             
             request_disability($chat_id);
             return;
         }
         else if(strpos($text, "/begin") === 0) {
-            Logger::debug("Begin command");
-
-            // Delete open journeys
-            $num_delete = db_perform_action("DELETE FROM `journeys` WHERE `telegram_id` = {$chat_id} AND `lat2` IS NULL AND `lng2` IS NULL");
-            Logger::debug("{$num_delete} open journeys deleted");
-
-            request_start($chat_id);
+            perform_command_begin($chat_id);
         }
         else if(strpos($text, "/setup") === 0) {
             Logger::debug("Setup command");
@@ -215,8 +234,8 @@ else if(isset($update['callback_query'])) {
             )
         ));
     }
-    else if(strpos($callback_data, "cancel") === 0) {
-        telegram_send_message($chat_id, "Allora niente. Se vuoi tracciare un nuovo percorso, usa il comando /begin.");
+    else if($callback_data == "cancel") {
+        request_restart($chat_id, "Allora niente. ☺ Vuoi tracciare un nuovo percorso?");
     }
     else if(strpos($callback_data, "rate ") === 0) {
         $data = explode(" ", substr($callback_data, 5));
@@ -245,7 +264,13 @@ else if(isset($update['callback_query'])) {
 
         db_perform_action("UPDATE `journeys` SET `help_needed` = ${help_needed} WHERE `id` = {$track_id}");
 
-        telegram_send_message($chat_id, "Grazie. 😉 Se vuoi tracciare un nuovo percorso, usa il comando /begin.");
+        request_restart($chat_id, "Grazie. 😉 Dimmi quando vuoi tracciare un nuovo percorso.");
+    }
+    else if($callback_data == "setup") {
+        request_disability($chat_id);
+    }
+    else if($callback_data == "begin") {
+        perform_command_begin($chat_id);
     }
     else {
         // Huh?
