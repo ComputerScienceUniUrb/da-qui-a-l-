@@ -9,6 +9,7 @@
  */
 
 require_once('data.php');
+require_once('lib_translation.php');
 
 // This file assumes to be included by pull.php or
 // hook.php right after receiving a new Telegram update.
@@ -24,55 +25,73 @@ function clamp($min, $max, $value) {
         return $value;
 }
 
-function perform_command_begin($chat_id) {
+function search_r($array, $key)
+{
+	if (!is_array($array)) {
+		return false;
+	}
+
+	if (isset($array[$key])) {
+		return $array[$key];
+	}
+
+	foreach ($array as $subarray) {
+		$sub_res = search_r($subarray, $key);
+		if($sub_res !== false){
+			return $sub_res;
+		}
+	}
+}
+
+function perform_command_begin($chat_id, $user_lang) {
     Logger::debug("Begin command");
 
     // Delete open journeys
     $num_delete = db_perform_action("DELETE FROM `journeys` WHERE `telegram_id` = {$chat_id} AND `lat2` IS NULL AND `lng2` IS NULL");
     Logger::debug("{$num_delete} open journeys deleted");
 
-    request_start($chat_id);
+    request_start($chat_id, $user_lang);
 }
 
-function request_disability($chat_id) {
-    telegram_send_message($chat_id, "Seleziona il pulsante che meglio rappresenta la condizione in cui affronti il percorso.",
+function request_disability($chat_id, $user_lang) {
+    telegram_send_message($chat_id, __t("Seleziona il pulsante che meglio rappresenta la condizione in cui affronti il percorso.", $user_lang),
         array("reply_markup" => array(
             "inline_keyboard" => array(
                 array(
-                    array("text" => "A piedi", "callback_data" => "dis a0"),
-                    array("text" => "Bimbo per mano", "callback_data" => "dis a11")
+                    array("text" => __t("A piedi", $user_lang), "callback_data" => "dis a0"),
+                    array("text" => __t("Bimbo per mano", $user_lang), "callback_data" => "dis a11")
                 ),
                 array(
-                    array("text" => "Bimbo in passeggino", "callback_data" => "dis a8"),
-                    array("text" => "Neonato in carrozzina", "callback_data" => "dis a9")
+                    array("text" => __t("Bimbo in passeggino", $user_lang), "callback_data" => "dis a8"),
+                    array("text" => __t("Neonato in carrozzina", $user_lang), "callback_data" => "dis a9")
                 ),
                 array(
-                    array("text" => "Gravidanza", "callback_data" => "dis a10"),
-                    array("text" => "Deambulatore", "callback_data" => "dis a4")
+                    array("text" => __t("Gravidanza", $user_lang), "callback_data" => "dis a10"),
+                    array("text" => __t("Deambulatore", $user_lang), "callback_data" => "dis a4")
                 ),
                 array(
-                    array("text" => "Bastone", "callback_data" => "dis a1"),
-                    array("text" => "Bastone tattile", "callback_data" => "dis a7")
+                    array("text" => __t("Bastone", $user_lang), "callback_data" => "dis a1"),
+                    array("text" => __t("Bastone tattile", $user_lang), "callback_data" => "dis a7")
                 ),
                 array(
-                    array("text" => "Stampelle", "callback_data" => "dis a2"),
-                    array("text" => "Tripode", "callback_data" => "dis a3")
+                    array("text" => __t("Stampelle", $user_lang), "callback_data" => "dis a2"),
+                    array("text" => __t("Tripode", $user_lang), "callback_data" => "dis a3")
                 ),
                 array(
-                    array("text" => "Carrozzella manuale", "callback_data" => "dis a5"),
-                    array("text" => "Carrozzella elettrica", "callback_data" => "dis a6")
+                    array("text" => __t("Carrozzella manuale", $user_lang), "callback_data" => "dis a5"),
+                    array("text" => __t("Carrozzella elettrica", $user_lang), "callback_data" => "dis a6")
                 )
             )
         ))
     );
 }
 
-function request_start($chat_id) {
-    telegram_send_message($chat_id, "Per iniziare a registrare, clicca sul pulsante qui sotto.",
+function request_start($chat_id, $user_lang) {
+    telegram_send_message($chat_id, __t("Per iniziare a registrare, clicca sul pulsante qui sotto.", $user_lang),
         array("reply_markup" => array(
             "keyboard" => array(
                 array(
-                    array("text" => "Inizia il percorso!", "request_location" => true)
+                    array("text" => __t("Inizia il percorso!",$user_lang), "request_location" => true)
                 )
             ),
             "resize_keyboard" => true,
@@ -81,12 +100,12 @@ function request_start($chat_id) {
     );
 }
 
-function request_end($chat_id) {
-    telegram_send_message($chat_id, "Clicca sul pulsante quando hai raggiunto la destinazione.",
+function request_end($chat_id, $user_lang) {
+    telegram_send_message($chat_id, __t("Clicca sul pulsante quando hai raggiunto la destinazione.", $user_lang),
         array("reply_markup" => array(
             "keyboard" => array(
                 array(
-                    array("text" => "Sono a destinazione!", "request_location" => true)
+                    array("text" => __t("Sono a destinazione!", $user_lang), "request_location" => true)
                 )
             ),
             "resize_keyboard" => true,
@@ -95,15 +114,15 @@ function request_end($chat_id) {
     );
 }
 
-function request_restart($chat_id, $text) {
+function request_restart($chat_id, $text, $user_lang) {
     telegram_send_message($chat_id, $text,
         array("reply_markup" => array(
             "inline_keyboard" => array(
                 array(
-                    array("text" => "Aggiorna condizione", "callback_data" => "setup")
+                    array("text" => __t("Aggiorna condizione", $user_lang), "callback_data" => "setup")
                 ),
                 array(
-                    array("text" => "Nuovo percorso", "callback_data" => "begin")
+                    array("text" => __t("Nuovo percorso",$user_lang), "callback_data" => "begin")
                 )
             )
         ))
@@ -111,6 +130,8 @@ function request_restart($chat_id, $text) {
 }
 
 // Input: $update
+$user_lang = search_r($update, 'language_code');
+var_dump($user_lang);
 
 if(isset($update['message'])) {
     // Standard message
@@ -119,6 +140,7 @@ if(isset($update['message'])) {
     $chat_id = $message['chat']['id'];
     $from_id = $message['from']['id'];
 
+
     if (isset($message['text'])) {
         // We got an incoming text message
         $text = $message['text'];
@@ -126,23 +148,23 @@ if(isset($update['message'])) {
         if (strpos($text, "/start") === 0) {
             Logger::debug("Start command");
 
-            telegram_send_message($chat_id, "Ciao, sono il bot Da-qui-a-lì! 🤖\n\nRaccolgo informazioni sull’accessibilità dei centri abitati per i pedoni."); 
+            telegram_send_message($chat_id, __t("Ciao, sono il bot Da-qui-a-lì! 🤖\n\nRaccolgo informazioni sull’accessibilità dei centri abitati per i pedoni.", $user_lang));
             
-            telegram_send_message($chat_id, "Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all’interno della città!"); 
+            telegram_send_message($chat_id, __t("Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all’interno della città!", $user_lang));
             
-            request_disability($chat_id);
+            request_disability($chat_id, $user_lang);
             return;
         }
         else if(strpos($text, "/begin") === 0) {
-            perform_command_begin($chat_id);
+            perform_command_begin($chat_id, $user_lang);
         }
         else if(strpos($text, "/setup") === 0) {
             Logger::debug("Setup command");
 
-            request_disability($chat_id);
+            request_disability($chat_id, $user_lang);
         }
         else {
-            telegram_send_message($chat_id, "Non ho capito.");
+            telegram_send_message($chat_id, __t("Non ho capito.", $user_lang));
         }
     }
     else if (isset($message['location'])) {
@@ -169,7 +191,7 @@ if(isset($update['message'])) {
 
             var_dump($stats_dis);
 
-            telegram_send_message($chat_id, "Hai percorso {$stats_kms} km in {$stats_mins} minuti, in questa condizione: {$stats_dis}. Ok?", array(
+            telegram_send_message($chat_id, __t("Hai percorso ", $user_lang).$stats_kms.__t(" km in ", $user_lang).$stats_mins.__t(" minuti, in questa condizione: ",$user_lang).__t($stats_dis,$user_lang).". Ok?", array(
                 "reply_markup" => array(
                     "inline_keyboard" => array(
                         array(
@@ -186,11 +208,11 @@ if(isset($update['message'])) {
             // New journey
             db_perform_action("INSERT INTO `journeys` (`id`, `telegram_id`, `disability`, `lat1`, `lng1`, `time1`) VALUES(DEFAULT, {$chat_id}, '".db_escape($user_disability)."', {$latitude}, {$longitude}, NOW())");
 
-            request_end($chat_id);
+            request_end($chat_id, $user_lang);
         }
     }
     else {
-        telegram_send_message($chat_id, "Uhm… non capisco questo tipo di messaggi! 😑\nPer riprovare invia /start.");
+        telegram_send_message($chat_id, __t("Uhm… non capisco questo tipo di messaggi! 😑\nPer riprovare invia /start.", $user_lang));
     }
 }
 
@@ -205,13 +227,13 @@ else if(isset($update['callback_query'])) {
         if(isset($disabilities_to_name_map[$dis_code])) {
             db_perform_action("REPLACE INTO `status` (`telegram_id`, `disability`) VALUES($chat_id, '".db_escape($dis_code)."')");
 
-            telegram_send_message($chat_id, "Ok, la tua condizione è memorizzata come: {$disabilities_to_name_map[$dis_code]}.");
+            telegram_send_message($chat_id, __t("Ok, la tua condizione è memorizzata come: ",$user_lang)."".__t($disabilities_to_name_map[$dis_code],$user_lang));
 
-            request_start($chat_id);
+            request_start($chat_id, $user_lang);
         }
         else {
             Logger::error("Invalid callback data: {$callback_data}");
-            telegram_send_message($chat_id, "Codice non valido. 😑");
+            telegram_send_message($chat_id, __t("Codice non valido. 😑", $user_lang));
         }
     }
     else if(strpos($callback_data, "confirm ") === 0) {
@@ -220,7 +242,7 @@ else if(isset($update['callback_query'])) {
         
         db_perform_action("UPDATE `journeys` SET `confirm` = 1 WHERE `id` = {$track_id}");
 
-        telegram_send_message($chat_id, "Registrato, grazie! Come valuteresti l’accessibilità del percorso, da 1 a 5?", array(
+        telegram_send_message($chat_id, __t("Registrato, grazie! Come valuteresti l’accessibilità del percorso, da 1 a 5?", $user_lang), array(
             "reply_markup" => array(
                 "inline_keyboard" => array(
                     array(
@@ -235,7 +257,7 @@ else if(isset($update['callback_query'])) {
         ));
     }
     else if($callback_data == "cancel") {
-        request_restart($chat_id, "Allora niente. ☺ Vuoi tracciare un nuovo percorso?");
+        request_restart($chat_id, __t("Allora niente. ☺ Vuoi tracciare un nuovo percorso?",$user_lang), $user_lang);
     }
     else if(strpos($callback_data, "rate ") === 0) {
         $data = explode(" ", substr($callback_data, 5));
@@ -245,12 +267,12 @@ else if(isset($update['callback_query'])) {
 
         db_perform_action("UPDATE `journeys` SET `rating` = ${rating} WHERE `id` = {$track_id}");
 
-        telegram_send_message($chat_id, "Bene. Hai avuto bisogno di aiuto durante il tragitto?", array(
+        telegram_send_message($chat_id, __t("Bene. Hai avuto bisogno di aiuto durante il tragitto?",$user_lang), array(
             "reply_markup" => array(
                 "inline_keyboard" => array(
                     array(
-                        array("text" => "Sì.", "callback_data" => "help {$track_id} 1"),
-                        array("text" => "No.", "callback_data" => "help {$track_id} 0")
+                        array("text" => __t("Sì.", $user_lang), "callback_data" => "help {$track_id} 1"),
+                        array("text" => __t("No.", $user_lang), "callback_data" => "help {$track_id} 0")
                     )
                 )
             )
@@ -264,13 +286,13 @@ else if(isset($update['callback_query'])) {
 
         db_perform_action("UPDATE `journeys` SET `help_needed` = ${help_needed} WHERE `id` = {$track_id}");
 
-        request_restart($chat_id, "Grazie. 😉 Dimmi quando vuoi tracciare un nuovo percorso.");
+        request_restart($chat_id, __t("Grazie. 😉 Dimmi quando vuoi tracciare un nuovo percorso.",$user_lang), $user_lang);
     }
     else if($callback_data == "setup") {
-        request_disability($chat_id);
+        request_disability($chat_id, $user_lang);
     }
     else if($callback_data == "begin") {
-        perform_command_begin($chat_id);
+        perform_command_begin($chat_id, $user_lang);
     }
     else {
         // Huh?
