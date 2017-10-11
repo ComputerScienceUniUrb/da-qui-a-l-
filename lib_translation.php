@@ -111,7 +111,7 @@ const TRANSLATION = array(
 
 	"Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all’interno della città!" => array(
 		"it" => "Le posizioni che mi invierai all'inizio e alla fine del tuo percorso ci aiuteranno a creare una mappa con i percorsi migliori all’interno della città!",
-		"en" => "Whenever you send me your location at the start and at the end of your journey you will help us in building a map of the best throughout the city!"
+		"en" => "Whenever you send me your location at the start and at the end of your journey you will help us in building a map of best paths throughout the city!"
 	),
 
 	"Non ho capito." => array(
@@ -141,7 +141,7 @@ const TRANSLATION = array(
 
 	"Allora niente. ☺ Vuoi tracciare un nuovo percorso?" => array(
 		"it" => "Allora niente. ☺ Vuoi tracciare un nuovo percorso?",
-		"en" => "Ok! nevermind... ☺ Do you want log another journey?"
+		"en" => "Ok! nevermind... ☺ Do you want to log another journey?"
 	),
 
 	"Bene. Hai avuto bisogno di aiuto durante il tragitto?" => array(
@@ -166,7 +166,7 @@ const TRANSLATION = array(
 
 	"Grazie. 😉 Dimmi quando vuoi tracciare un nuovo percorso." => array(
 		"it" => "Grazie. 😉 Dimmi quando vuoi tracciare un nuovo percorso.",
-		"en" => "Thanks. 😉 Please warn me whenever you want to log another journey."
+		"en" => "Thanks. 😉 Please, tell me whenever you want to log another journey."
 	)
 
 );
